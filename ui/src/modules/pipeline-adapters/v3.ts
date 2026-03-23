@@ -221,12 +221,15 @@ export class V3PipelineAdapter implements PipelineAdapter {
 
     // 1. Source topics: schema.fields -> schema_fields, id_field -> key, add schema_version/schema_registry
     if (apiConfig.source?.topics) {
+      const reg = internalConfig.source?.schemaRegistry
       apiConfig.source.topics.forEach((topic: any) => {
         if (topic.schema?.fields) {
-          topic.schema_fields = topic.schema.fields.map((f: any) => ({
-            name: f.name,
-            type: f.type || 'string',
-          }))
+          topic.schema_fields = topic.schema.fields
+            .filter((f: any) => !f.isRemoved)
+            .map((f: any) => ({
+              name: f.name,
+              type: f.userType || f.type || 'string',
+            }))
           delete topic.schema
         }
         if (topic.deduplication) {
@@ -236,11 +239,25 @@ export class V3PipelineAdapter implements PipelineAdapter {
           }
           delete topic.deduplication.id_field_type
         }
-        if (topic.schema_version === undefined) topic.schema_version = '1'
-        if (topic.schema_registry === undefined) {
-          topic.schema_registry = { url: '', api_key: '', api_secret: '' }
+        // schema_version: use registry version for external topics
+        if (topic.schemaSource === 'external' && topic.schemaRegistryVersion && topic.schemaRegistryVersion !== 'latest') {
+          topic.schema_version = topic.schemaRegistryVersion
+        } else if (topic.schema_version === undefined) {
+          topic.schema_version = '1'
         }
+        // Always emit schema_registry (filled for external, empty for internal)
+        topic.schema_registry = {
+          url: reg?.url ?? '',
+          api_key: reg?.apiKey ?? '',
+          api_secret: reg?.apiSecret ?? '',
+        }
+        // Remove internal-only fields
+        delete topic.schemaSource
+        delete topic.schemaRegistrySubject
+        delete topic.schemaRegistryVersion
       })
+      // Remove schemaRegistry from source (not part of backend API JSON)
+      delete apiConfig.source.schemaRegistry
     }
 
     // 2. Sink: flat -> connection_params; table_mapping -> mapping; set source_id
