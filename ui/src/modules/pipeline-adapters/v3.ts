@@ -2,6 +2,7 @@ import { PipelineAdapter } from './types'
 import { InternalPipelineConfig } from '@/src/types/pipeline'
 import { PipelineVersion } from '@/src/config/pipeline-versions'
 import { toTransformArray, exprToFieldName } from '@/src/modules/transformation/utils'
+import { isRegistrySchema } from '@/src/modules/kafka/utils/schemaSource'
 
 export class V3PipelineAdapter implements PipelineAdapter {
   version = PipelineVersion.V3
@@ -239,8 +240,8 @@ export class V3PipelineAdapter implements PipelineAdapter {
           }
           delete topic.deduplication.id_field_type
         }
-        // schema_version: use registry version for external topics
-        if (topic.schemaSource === 'external' && topic.schemaRegistryVersion && topic.schemaRegistryVersion !== 'latest') {
+        // schema_version: use registry version for registry-sourced topics
+        if (isRegistrySchema(topic.schemaSource) && topic.schemaRegistryVersion && topic.schemaRegistryVersion !== 'latest') {
           topic.schema_version = topic.schemaRegistryVersion
         } else if (topic.schema_version === undefined) {
           topic.schema_version = '1'
