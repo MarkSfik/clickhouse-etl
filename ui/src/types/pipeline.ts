@@ -183,6 +183,9 @@ export interface Pipeline {
       url: string
       apiKey: string
       apiSecret: string
+      authMethod?: string
+      username?: string
+      password?: string
     }
     topics: Array<{
       name: string

@@ -47,6 +47,8 @@ interface PipelineDetailsHeaderProps {
   showHeader?: boolean
   onManageTags?: () => void
   tags?: string[]
+  /** Called after a successful edit so schema bindings can be refreshed */
+  onBindingsChanged?: () => void
 }
 
 function PipelineDetailsHeader({
@@ -58,6 +60,7 @@ function PipelineDetailsHeader({
   showHeader = true,
   onManageTags,
   tags,
+  onBindingsChanged,
 }: PipelineDetailsHeaderProps) {
   const [activeModal, setActiveModal] = useState<PipelineAction | null>(null)
   const [copied, setCopied] = useState(false)
@@ -109,6 +112,7 @@ function PipelineDetailsHeader({
     pipeline,
     executeEditAction: (apiConfig) => executeAction('edit', apiConfig),
     onPipelineUpdate,
+    onBindingsChanged,
   })
 
   // Hook for computing display status (variant, label)
