@@ -247,10 +247,23 @@ export class V3PipelineAdapter implements PipelineAdapter {
           topic.schema_version = '1'
         }
         // Always emit schema_registry (filled for external, empty for internal)
+        // Map UI auth methods to backend fields (api_key/api_secret):
+        // - 'api_key': api_key = apiKey, api_secret = apiSecret
+        // - 'basic': api_key = username, api_secret = password (same Basic auth, different credential labels)
+        // - 'none': empty credentials
+        let schemaRegApiKey = ''
+        let schemaRegApiSecret = ''
+        if (reg?.authMethod === 'api_key') {
+          schemaRegApiKey = reg.apiKey ?? ''
+          schemaRegApiSecret = reg.apiSecret ?? ''
+        } else if (reg?.authMethod === 'basic') {
+          schemaRegApiKey = reg.username ?? ''
+          schemaRegApiSecret = reg.password ?? ''
+        }
         topic.schema_registry = {
           url: reg?.url ?? '',
-          api_key: reg?.apiKey ?? '',
-          api_secret: reg?.apiSecret ?? '',
+          api_key: schemaRegApiKey,
+          api_secret: schemaRegApiSecret,
         }
         // Remove internal-only fields
         delete topic.schemaSource
