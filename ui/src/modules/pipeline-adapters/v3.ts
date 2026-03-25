@@ -240,9 +240,12 @@ export class V3PipelineAdapter implements PipelineAdapter {
           }
           delete topic.deduplication.id_field_type
         }
-        // schema_version: use registry version for registry-sourced topics
+        // schema_version: backend expects "sourceId:version" format (e.g. "my-topic-value:1")
         if (isRegistrySchema(topic.schemaSource) && topic.schemaRegistryVersion && topic.schemaRegistryVersion !== 'latest') {
-          topic.schema_version = topic.schemaRegistryVersion
+          const subject = topic.schemaRegistrySubject
+          topic.schema_version = subject
+            ? `${subject}:${topic.schemaRegistryVersion}`
+            : topic.schemaRegistryVersion
         } else if (topic.schema_version === undefined) {
           topic.schema_version = '1'
         }
