@@ -62,35 +62,35 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }
 
     // Extract ClickHouse connection parameters
-    // Decode base64 password if it's encoded
-    let decodedPassword = sink.password || ''
+    // V3 nests credentials under connection_params; V2 keeps them flat on sink
+    const cp = sink.connection_params || {}
+    const rawPassword = cp.password || sink.password || ''
+    let decodedPassword = rawPassword
     try {
-      if (sink.password && typeof sink.password === 'string') {
-        const decoded = atob(sink.password)
-        // If decoding succeeds and doesn't contain control characters, use decoded version
+      if (rawPassword && typeof rawPassword === 'string') {
+        const decoded = atob(rawPassword)
         if (decoded && !/[\x00-\x1F\x7F]/.test(decoded)) {
           decodedPassword = decoded
         }
       }
     } catch (error) {
-      // If decoding fails, use original password (might not be base64 encoded)
-      decodedPassword = sink.password || ''
+      decodedPassword = rawPassword
     }
 
     // Prefer http_port for HTTP connection; backend stores port (native) and http_port separately
     const httpPort = parseInt(
-      sink.http_port ?? sink.port ?? 8123,
+      cp.http_port ?? sink.http_port ?? cp.port ?? sink.port ?? 8123,
       10
     )
     const clickhouseConfig = {
-      host: sink.host,
+      host: cp.host || sink.host,
       httpPort: Number.isNaN(httpPort) ? 8123 : httpPort,
-      nativePort: sink.native_port ? parseInt(sink.native_port) : undefined,
-      username: sink.username,
+      nativePort: (cp.native_port || sink.native_port) ? parseInt(cp.native_port || sink.native_port) : undefined,
+      username: cp.username || sink.username,
       password: decodedPassword,
-      database: sink.database,
-      useSSL: sink.secure || false,
-      skipCertificateVerification: sink.skip_certificate_verification || false,
+      database: cp.database || sink.database,
+      useSSL: cp.secure ?? sink.secure ?? false,
+      skipCertificateVerification: cp.skip_certificate_verification ?? sink.skip_certificate_verification ?? false,
     }
 
     // Connect to ClickHouse and fetch metrics
