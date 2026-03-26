@@ -12,7 +12,33 @@ export class V3PipelineAdapter implements PipelineAdapter {
 
     // 1. Source topics: schema_fields -> schema.fields, deduplication.key -> id_field
     if (internalConfig.source?.topics) {
+      // Extract per-topic schema_registry into source.schemaRegistry so that
+      // generate() can re-emit credentials. Without this, the hydrate→generate
+      // round-trip (used by download AND edit/resume) loses registry credentials.
+      const firstRegTopic = internalConfig.source.topics.find(
+        (t: any) => t.schema_registry?.url,
+      )
+      if (firstRegTopic && !internalConfig.source.schemaRegistry) {
+        const sr = firstRegTopic.schema_registry
+        internalConfig.source.schemaRegistry = {
+          url: sr.url,
+          authMethod: sr.api_key ? 'api_key' : 'none',
+          apiKey: sr.api_key ?? '',
+          apiSecret: sr.api_secret ?? '',
+          username: '',
+          password: '',
+        }
+      }
+
       internalConfig.source.topics.forEach((topic: any) => {
+        // Preserve schema source metadata from per-topic fields so generate()
+        // can reconstruct schema_version in the correct format.
+        if (topic.schema_version && !topic.schemaSource) {
+          if (topic.schema_registry?.url) {
+            topic.schemaSource = 'external'
+          }
+        }
+
         if (Array.isArray(topic.schema_fields)) {
           topic.schema = {
             type: 'json',
